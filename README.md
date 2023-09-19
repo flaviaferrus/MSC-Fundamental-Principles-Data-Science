@@ -1,6 +1,6 @@
 # Master's in Fundamental Principles of Data Science at UB
 
-Welcome to my GitHub repository dedicated to my Master's program in Fundamental Principles of Data Science at UB. In this repository, you will find a collection of my coursework, projects, and research from my academic journey. This repository serves as a comprehensive portfolio of my work, showcasing my dedication to mastering the main basis and principles from the different areas of data science, i.e. Machine Learning, Deep Learning, NLP, ...
+Welcome to my GitHub repository dedicated to my Master's program in Fundamental Principles of Data Science at UB. In this repository, you will find a collection of my coursework, projects, and research from my academic journey. This repository serves as a comprehensive portfolio of my work, showcasing my dedication to mastering the main basis and principles from the different areas of data science.
 
 
 ## About the Program
