@@ -1,0 +1,136 @@
+---
+title: 'Kalman Filter implementation'
+author: "Gerard Castro, Flàvia Ferrús"
+#abstract: "Implementation of the KF as data assimilation for the CFD predictions of a turbulent flow in a finite cylinder. "
+date: '`r format(Sys.time(), "%B %d, %Y")`'
+output:
+  pdf_document: 
+    fig_caption: true
+    number_sections: true
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{=tex}
+\tableofcontents
+\newpage
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,eval=T,include=T,message = FALSE,warning=FALSE)
+```
+
+```{r include=FALSE}
+library(dlm)
+library(forecast)
+library(ggplot2)
+library(zoo)
+library(stats)
+library(readr)
+library(lmtest)
+```
+
+\section{Experimental data}
+
+```{r include=TRUE}
+X2022_03_10_17_20_36 <- read_csv("2022-03-14-15-27-49.csv")
+AE <- X2022_03_10_17_20_36[ 120: 300, ]
+AE <- cbind( AE$`657 [m/s]`, AE$`076 [m/s]`)
+colnames(AE) <- c("velE", "velA")
+AE <- as.data.frame(AE)
+velA <- as.numeric(AE$velA)
+auto.arima(velA)  # it should behave as white noise: ARIMA(0,0,0)
+```
+
+\subsection{Graphic}
+
+```{r include=TRUE}
+x <- index(AE)
+g.dlm <- ggplot(data =AE, aes(x= x, y= as.numeric(velE)), color= "navy") + geom_line()+
+  geom_line(aes( y=as.numeric(velA)), color = "coral")
+g.dlm
+```
+
+\section{Simulated data}
+
+Also the punctual distribution over time were simulated for point A for the turbulent flow
+
+```{r include=TRUE}
+PTdata <- read.csv("Puntuals 180s - Full 1.csv", dec=",", header=TRUE, stringsAsFactors=FALSE)
+PT <- as.data.frame(cbind(PTdata$X.1[4:362]*10^(-16), PTdata$X.3[4:362]*10^(-16), PTdata$X.5[4:362]*10^(-16), PTdata$X.7[4:362]*10^(-16)))
+colnames(PT) <- c("velA05", "velC05", "velC06", "velA06")
+row_odd <- seq_len(nrow(PT)) %% 2              # Create row indicator
+#row_odd  
+PTu <- as.data.frame(PT[row_odd == 0, ] ) 
+
+mmA <- as.data.frame((PTu$velA05+ PTu$velA06)/2)
+colnames(mmA) <- "mitjana"
+```
+
+The simulated values remain lower than real distribution this time. However, this 
+is caused by the asymmetry of the system's solution. Therefore, the data used 
+for the KF is the obtained computing the mean between the different y axis.
+
+\section{Kalman Filter}
+
+\subsection{SMM}
+
+We build our SSM through and ARIMA model. The best ARIMA model was found using R's package called \texttt{auto.arima} and was a MA(2) with:
+
+```{r include=TRUE}
+velA_mit <- mmA$mitjana[59:178] - 1.0566  # we should encode 1.0566 as mean(mmA$mitjana[59:178])
+auto.arima(velA_mit)
+```
+
+I.e. 0.8505, 0.2416 as the MA(2) parameters.
+
+\subsection{Applying the KF}
+
+We build our SSM matrices using
+
+```{r include=TRUE}
+m1.dlm <- dlmModARMA( ma= c(0.8504, 0.2416))
+m1.dlm
+```
+
+And we apply the KF storing the result at \texttt{A3mean}
+
+```{r include=TRUE}
+##MA(2) to shifted mean velA centered (afterwards we'll include the mean)
+## it is simply z_t = x_t - \mu
+model.filteredA3 <- dlmFilter(velA-mean(velA), m1.dlm)
+A3mean <-  model.filteredA3$f + mean(velA)  # this is a little tricky; I'll comment it later
+```
+
+\section{Results}
+
+```{r echo=TRUE, fig.width=6, fig.height=3, fig.cap= ("\\label{fig:fig3}Experimental and simulated flow velocity for the measurement points over time and filtered data using the Kalman Filter with the simulated data set update. Experimental configuration with diameter of 0.04m, and simulated data for the configuration of turbulent flow with 0.04m diameter. ")}
+
+experimentalFilter  <- data.frame(x = index(velA[60:179]), 
+                                  values = c(velA[58:177], # already shifted! 
+                                             A3mean[59:178],
+                                             mmA$mitjana[59:178]), 
+                        Data = c(rep("True velocity point A", 120), 
+                                 rep("Kalman Filtered using MA(2) w/mean", 120),
+                                 rep("Simulated velocity point A", 120)
+                                 ))
+ggplot(experimentalFilter, aes(x, values, col= Data, linetype=Data))+geom_line(size=0.5)+
+  scale_color_manual(values= c("blue",  "deepskyblue", "navy")) +
+  scale_linetype_manual(values=c("solid", "dotdash","dashed"))+
+  theme(panel.background = element_rect(fill = "white", colour = "grey50"))+
+  xlab("Time (s)") + ylab("Velocity (m/s)")
+```
+
+
+```{r include=TRUE}
+mean((A3mean[59:178]- velA[58:177])^2)
+mean((mmA$mitjana[59:178]- velA[58:177])^2)
+sd(mmA$mitjana[59:178])
+sd(A3mean[59:178])
+acf(A3mean[59:178])
+acf(mmA$mitjana[59:178])
+```
+
+
+
+
