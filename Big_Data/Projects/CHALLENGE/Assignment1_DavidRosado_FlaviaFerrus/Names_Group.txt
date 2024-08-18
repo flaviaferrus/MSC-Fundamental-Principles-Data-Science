@@ -1,0 +1,3 @@
+Flàvia Ferrús Marimón. NIUB:21287221
+David Rosado Rodríguez. NIUB: 20194344
+https://hub.docker.com/repository/docker/david44444/bd-assignment1/general
