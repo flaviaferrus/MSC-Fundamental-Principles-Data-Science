@@ -1,0 +1,2 @@
+gcc -c -fPIC qr_givens.c
+gcc -shared qr_givens.o -o qr_givens.so

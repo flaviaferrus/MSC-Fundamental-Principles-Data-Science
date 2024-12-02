@@ -1,0 +1,1 @@
+gcc main_qr.c funcions_auxiliars_matrius.c qr_givens.c -o main_qr.exe -lm -Wall -O3
